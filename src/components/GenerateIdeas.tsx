@@ -1,7 +1,6 @@
 
 type GenerateIdeasProps = {
   message: string
-  setMessage: (message: string) => void
   generateIdeas: (level: string) => Promise<void>
   projects: any[]
   savedProjects: any[]
@@ -13,7 +12,6 @@ type GenerateIdeasProps = {
 
 function GenerateIdeas({
   message,
-  setMessage,
   generateIdeas,
   projects,
   savedProjects,
