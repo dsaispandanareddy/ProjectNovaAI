@@ -1,4 +1,5 @@
-
+import Dashboard from './components/Dashboard'
+import Sidebar from './components/Sidebar'
 import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import './App.css'
@@ -40,6 +41,7 @@ function App() {
   const [savedProjects, setSavedProjects] = useState<any[]>([])
   const [generatedCount, setGeneratedCount] = useState(0)
   const [exploredCount, setExploredCount] = useState(0)
+  const [activeTab, setActiveTab] = useState('dashboard')
 
   async function loadProfile(id: string, fallbackName = '') {
     const { data, error } = await supabase
@@ -534,22 +536,15 @@ async function removeSavedProject(id: string) {
 
   return (
     <div className="app">
-      <aside className="sidebar">
-        <h2>✦ ProjectNova</h2>
-        <p className="nav-label">WORKSPACE</p>
-        <a className="active" href="#dashboard">⌂ Dashboard</a>
-        <a href="#generate">✧ Generate Ideas</a>
-        <a href="#saved">♡ Saved Projects</a>
-        <p className="nav-label">PERSONAL</p>
-        <a href="#profile">◎ My Profile</a>
-        <a href="#settings">⚙ Settings</a>
-        <div className="sidebar-bottom">
-          <button className="setup-back" disabled={busy} onClick={logout}>
-            {busy ? 'Please wait...' : '↪ Log out'}
-          </button>
-          <p>Turn ideas into reality ✨</p>
-        </div>
-      </aside>
+    <Sidebar
+         busy={busy}
+          logout={logout}
+          activeTab={activeTab}
+        setActiveTab={(tab) => {
+  setSelectedProject(null)
+  setActiveTab(tab)
+}}
+          />
 
       <main className="main" id="dashboard">
         <header className="topbar">
@@ -559,41 +554,19 @@ async function removeSavedProject(id: string) {
           </span>
         </header>
 
-        <section className="welcome">
-          <p className="eyebrow">YOUR PERSONAL PROJECT ASSISTANT</p>
-          <h1>Build something <span>extraordinary.</span></h1>
-          <p>
-            Welcome, {profile?.name || name}! Discover projects tailored to your
-            skills, interests, and goals.
-          </p>
-          <a className="primary-button" href="#generate">
-            ✦ Generate project ideas →
-          </a>
-        </section>
-
-        
-<section className="stats">
-  <article className="stat-card">
-    <span>💡</span>
-    <p>Ideas generated</p>
-    <h2>{generatedCount}</h2>
-  </article>
-
-  <article className="stat-card">
-    <span>♥</span>
-    <p>Saved projects</p>
-    <h2>{savedProjects.length}</h2>
-  </article>
-
-  <article className="stat-card">
-    <span>🚀</span>
-    <p>Projects explored</p>
-    <h2>{exploredCount}</h2>
-  </article>
-</section>
+       {activeTab === 'dashboard' && (
+  <Dashboard
+    name={profile?.name || name}
+    generatedCount={generatedCount}
+    savedCount={savedProjects.length}
+    exploredCount={exploredCount}
+    onGenerate={() => setActiveTab('generate')}
+  />
+)}
 
 
-        <section className="section" id="generate">
+        {activeTab === 'generate' && (
+  <section className="section" id="generate">
           <h2>Ready for your next idea?</h2>
           <p>Choose a difficulty to discover 3 personalized projects.</p>
           <div className="generate-card">
@@ -715,60 +688,76 @@ setMessage('')
 </div>
           </div>
         </section>
-
+        )}
 {selectedProject && (
-  <section className="project-details">
-    <h2>Project Details</h2>
-    <h3>{selectedProject.title}</h3>
-    <p>{selectedProject.description}</p>
+  <div className="details-overlay">
+    <section className="project-details">
+      <button
+        className="details-close"
+        onClick={() => setSelectedProject(null)}
+        aria-label="Close project details"
+      >
+        ✕
+      </button>
 
-    <p><strong>Problem:</strong> {selectedProject.problem || 'Not provided'}</p>
+      <h2>Project Details</h2>
+      <h3>{selectedProject.title}</h3>
+      <p>{selectedProject.description}</p>
 
-    <p><strong>Objectives:</strong></p>
-    <ul>
-      {(selectedProject.objectives ?? []).map(
-        (item: string, index: number) => <li key={index}>{item}</li>
-      )}
-    </ul>
+      <p><strong>Problem:</strong> {selectedProject.problem || 'Not provided'}</p>
 
-    <p><strong>Target Users:</strong> {selectedProject.target_users || 'Not provided'}</p>
+      <p><strong>Objectives:</strong></p>
+      <ul>
+        {(selectedProject.objectives ?? []).map((item: string, index: number) => (
+          <li key={index}>{item}</li>
+        ))}
+      </ul>
 
-    <p><strong>Technologies:</strong></p>
-    <ul>
-      {(selectedProject.technologies ?? []).map(
-        (item: string, index: number) => <li key={index}>{item}</li>
-      )}
-    </ul>
+      <p><strong>Target Users:</strong> {selectedProject.target_users || 'Not provided'}</p>
 
-    <p><strong>Required Skills:</strong></p>
-    <ul>
-      {(selectedProject.required_skills ?? []).map(
-        (item: string, index: number) => <li key={index}>{item}</li>
-      )}
-    </ul>
+      <p><strong>Technologies:</strong></p>
+      <ul>
+        {(Array.isArray(selectedProject.technologies)
+          ? selectedProject.technologies
+          : selectedProject.technologies
+            ? [selectedProject.technologies]
+            : []
+        ).map((item: string, index: number) => (
+          <li key={index}>{item}</li>
+        ))}
+      </ul>
 
-    <p><strong>Features:</strong></p>
-    <ul>
-      {(selectedProject.features ?? []).map(
-        (item: string, index: number) => <li key={index}>{item}</li>
-      )}
-    </ul>
+      <p><strong>Required Skills:</strong></p>
+      <ul>
+        {(selectedProject.required_skills ?? []).map((item: string, index: number) => (
+          <li key={index}>{item}</li>
+        ))}
+      </ul>
 
-    <p><strong>Difficulty:</strong> {selectedProject.difficulty}</p>
-    <p><strong>Estimated Duration:</strong> {selectedProject.estimated_duration || 'Not provided'}</p>
-    <p><strong>Expected Outcome:</strong> {selectedProject.expected_outcome || 'Not provided'}</p>
+      <p><strong>Features:</strong></p>
+      <ul>
+        {(selectedProject.features ?? []).map((item: string, index: number) => (
+          <li key={index}>{item}</li>
+        ))}
+      </ul>
 
-    <button
-      className="secondary-button"
-      onClick={() => setSelectedProject(null)}
-    >
-      Close Details
-    </button>
-  </section>
+      <p><strong>Difficulty:</strong> {selectedProject.difficulty}</p>
+      <p><strong>Estimated Duration:</strong> {selectedProject.estimated_duration || 'Not provided'}</p>
+      <p><strong>Expected Outcome:</strong> {selectedProject.expected_outcome || 'Not provided'}</p>
+
+      <button
+        className="secondary-button"
+        onClick={() => setSelectedProject(null)}
+      >
+        Close Details
+      </button>
+    </section>
+  </div>
 )}
 
         
-<section className="section" id="saved">
+{activeTab === 'saved' && (
+  <section className="section" id="saved">
   <h2>Saved Projects</h2>
   <p>Your saved ideas are stored in your account.</p>
 
@@ -817,8 +806,9 @@ setMessage('')
     </div>
   )}
 </section>
-
-
+)}
+        
+        {activeTab === 'profile' && (
         <section className="section" id="profile">
           <h2>My Profile</h2>
           <p>Name: {profile?.name}</p>
@@ -835,6 +825,14 @@ setMessage('')
             Edit profile
           </button>
         </section>
+        )}
+
+        {activeTab === 'settings' && (
+  <section className="section" id="settings">
+    <h2>Settings</h2>
+    <p>Manage your ProjectNova preferences.</p>
+  </section>
+)}
 
         <footer>ProjectNova AI · From ideas to implementation ✨</footer>
       </main>
