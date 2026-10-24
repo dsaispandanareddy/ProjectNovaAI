@@ -626,7 +626,6 @@ async function removeSavedProject(id: string) {
        {activeTab === 'generate' && (
   <GenerateIdeas
     message={message}
-    setMessage={setMessage}
     generateIdeas={generateIdeas}
     projects={projects}
     savedProjects={savedProjects}
