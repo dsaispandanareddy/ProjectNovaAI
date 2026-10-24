@@ -654,7 +654,9 @@ if (historyError) {
   console.error('Could not save generation history:', historyError)
 }
 else {
+  if (userId) {
   await loadGeneratedCount(userId)
+}
 }
 setMessage('')
   } catch (error) {
