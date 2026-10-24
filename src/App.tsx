@@ -1,3 +1,5 @@
+import Profile from './components/Profile'
+import GenerateIdeas from './components/GenerateIdeas'
 import Dashboard from './components/Dashboard'
 import Sidebar from './components/Sidebar'
 import { useEffect, useState } from 'react'
@@ -87,6 +89,56 @@ async function loadSavedProjects(id: string) {
 
   if (error) throw error
   setSavedProjects(data ?? [])
+}
+async function generateIdeas(level: string) {
+  setBusy(true)
+  setMessage('Generating your 3 project ideas...')
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession()
+    const accessToken = sessionData.session?.access_token
+
+    if (!accessToken) {
+      throw new Error('Session expired. Please log in again.')
+    }
+
+    const { data, error } = await supabase.functions.invoke(
+      'generate-projects',
+      {
+        body: { difficulty: level, outputType: 'ideas' },
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    )
+
+    if (error) throw error
+
+    const generatedIdeas = data?.projects ?? data?.result?.projects ?? []
+    setProjects(generatedIdeas)
+
+    if (userId) {
+      const { error: historyError } = await supabase
+        .from('generation_history')
+        .insert({
+          user_id: userId,
+          ideas_count: generatedIdeas.length,
+          difficulty: level,
+        })
+
+      if (historyError) {
+        console.error('Could not save generation history:', historyError)
+      } else {
+        await loadGeneratedCount(userId)
+      }
+    }
+
+    setMessage('')
+  } catch (error) {
+    setMessage(
+      error instanceof Error ? error.message : 'Generation failed.'
+    )
+  } finally {
+    setBusy(false)
+  }
 }
 
 async function loadGeneratedCount(id: string) {
@@ -547,12 +599,18 @@ async function removeSavedProject(id: string) {
           />
 
       <main className="main" id="dashboard">
-        <header className="topbar">
-          <span>Workspace / Dashboard</span>
-          <span className="avatar">
-            {profile?.name?.charAt(0).toUpperCase() || 'N'}
-          </span>
-        </header>
+        
+<header className="topbar">
+  <div className="topbar-welcome">
+    <h2>Good afternoon 👋</h2>
+    <p>Ready to build something amazing?</p>
+  </div>
+
+  <span className="avatar">
+    {profile?.name?.charAt(0).toUpperCase() || 'N'}
+  </span>
+</header>
+
 
        {activeTab === 'dashboard' && (
   <Dashboard
@@ -565,130 +623,19 @@ async function removeSavedProject(id: string) {
 )}
 
 
-        {activeTab === 'generate' && (
-  <section className="section" id="generate">
-          <h2>Ready for your next idea?</h2>
-          <p>Choose a difficulty to discover 3 personalized projects.</p>
-          <div className="generate-card">
-            <div className="sparkle">✦</div>
-            <div>
-              <h3>Project Idea Generator</h3>
-              <p>Start with your goals and experience.</p>
-            </div>
-          </div>
-          <div className="difficulty">
-            <h3>Select difficulty</h3>
-            <div className="difficulty-options">
-              {['Beginner', 'Intermediate', 'Advanced'].map(level => (
-                <button
-                  key={level}
-                  onClick={async () => {
-  try {
-    setMessage('Generating your 3 project ideas...')
-
-   
-const { data: sessionData } = await supabase.auth.getSession()
-const accessToken = sessionData.session?.access_token
-
-if (!accessToken) {
-  throw new Error('Session expired. Please log in again.')
-}
-
-const { data, error } = await supabase.functions.invoke(
-  'generate-projects',
-  {
-    body: {
-  difficulty: level,
-  outputType: 'ideas',
-},
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  }
-)
-
-
-    if (error) throw error
-
-    
-console.log('Generation response:', data)
-const generatedIdeas = data?.projects ?? data?.result?.projects ?? []
-setProjects(generatedIdeas)
-
-const { error: historyError } = await supabase
-  .from('generation_history')
-  .insert({
-    user_id: userId,
-    ideas_count: generatedIdeas.length,
-    difficulty: level,
-  })
-
-if (historyError) {
-  console.error('Could not save generation history:', historyError)
-}
-else {
-  if (userId) {
-  await loadGeneratedCount(userId)
-}
-}
-setMessage('')
-  } catch (error) {
-    setMessage(
-      error instanceof Error ? error.message : 'Generation failed.'
-    )
-  }
-}}
-                >
-                  {level}
-                </button>
-              ))}
-            </div>
-            {message && <p className="setup-note">{message}</p>}
-
-<div className="project-grid">
-  {projects.map((project, index) => (
-    <article className="project-card" key={index}>
-      <span>PROJECT {index + 1}</span>
-      <h3>{project.title}</h3>
-      <p>{project.description}</p>
-      <p><strong>Technologies:</strong> {
-        Array.isArray(project.technologies)
-          ? project.technologies.join(', ')
-          : project.technologies
-      }</p>
-      <p><strong>Difficulty:</strong> {project.difficulty}</p>
-      
-
-
-<button
-  className="secondary-button"
-  onClick={() => {
-    setSelectedProject(project)
-    void trackExploredProject(project)
-  }}
->
-  View Details →
-</button>
-
-<button
-  className="secondary-button"
-  disabled={busy}
-  onClick={() => saveProject(project)}
->
-  {savedProjects.some(
-  saved => saved.title?.trim() === project.title?.trim()
-)
-  ? '♥ Saved'
-  : '♡ Save Project'}
-</button>
-
-
-    </article>
-  ))}
-</div>
-          </div>
-        </section>
-        )}
+       {activeTab === 'generate' && (
+  <GenerateIdeas
+    message={message}
+    setMessage={setMessage}
+    generateIdeas={generateIdeas}
+    projects={projects}
+    savedProjects={savedProjects}
+    busy={busy}
+    setSelectedProject={setSelectedProject}
+    trackExploredProject={trackExploredProject}
+    saveProject={saveProject}
+  />
+)}
 {selectedProject && (
   <div className="details-overlay">
     <section className="project-details">
@@ -808,24 +755,78 @@ setMessage('')
 </section>
 )}
         
-        {activeTab === 'profile' && (
-        <section className="section" id="profile">
-          <h2>My Profile</h2>
-          <p>Name: {profile?.name}</p>
-          <p>Skills: {profile?.skills.join(', ')}</p>
-          <p>Interests: {profile?.interests.join(', ')}</p>
-          <p>Experience: {profile?.experience}</p>
-          <button
-            className="secondary-button"
-            onClick={() => {
-              setMessage('')
-              setPage('profile')
-            }}
-          >
-            Edit profile
-          </button>
-        </section>
-        )}
+       
+{activeTab === 'profile' && (
+  <section className="section profile-page" id="profile">
+    <div className="profile-heading">
+      <div>
+        <p className="profile-eyebrow">YOUR PERSONAL SPACE</p>
+        <h2>My Profile</h2>
+        <p>Track your skills and shape your project journey.</p>
+      </div>
+      <div className="profile-avatar">
+        {profile?.name?.charAt(0).toUpperCase() || 'N'}
+      </div>
+    </div>
+
+    <div className="profile-summary-card">
+      <div className="profile-card-top">
+        <div>
+          <span className="profile-status">✦ PROFILE OVERVIEW</span>
+          <h3>{profile?.name || 'Your Name'}</h3>
+          <p>{profile?.experience || 'Beginner'} · Experience level</p>
+        </div>
+        <span className="profile-sparkle">✦</span>
+      </div>
+
+      <div className="profile-stats">
+        <div className="profile-stat">
+          <span>SKILLS</span>
+          <strong>{profile?.skills.length || 0}</strong>
+        </div>
+        <div className="profile-stat">
+          <span>INTERESTS</span>
+          <strong>{profile?.interests.length || 0}</strong>
+        </div>
+      </div>
+
+      <div className="profile-detail">
+        <h4><span>✦</span> My Skills</h4>
+        <div className="profile-tags">
+          {profile?.skills.map(skill => (
+            <span className="profile-tag" key={skill}>{skill}</span>
+          ))}
+        </div>
+      </div>
+
+      <div className="profile-detail">
+        <h4><span>✧</span> My Interests</h4>
+        <div className="profile-tags">
+          {profile?.interests.map(interest => (
+            <span className="profile-tag" key={interest}>
+              {interest}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <button
+        className="profile-edit-button"
+        onClick={() => {
+          setMessage('')
+          setPage('profile')
+        }}
+      >
+        Edit profile <span>→</span>
+      </button>
+    </div>
+
+    <p className="profile-footer">
+      ✦ Keep growing. Your next great project starts here.
+    </p>
+  </section>
+)}
+
 
         {activeTab === 'settings' && (
   <section className="section" id="settings">
