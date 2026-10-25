@@ -1,3 +1,4 @@
+import Settings from './components/Settings'
 import Profile from './components/Profile'
 import GenerateIdeas from './components/GenerateIdeas'
 import Dashboard from './components/Dashboard'
@@ -606,11 +607,15 @@ async function removeSavedProject(id: string) {
     <p>Ready to build something amazing?</p>
   </div>
 
-  <span className="avatar">
-    {profile?.name?.charAt(0).toUpperCase() || 'N'}
-  </span>
+  <button
+  type="button"
+  className="avatar"
+  onClick={() => setActiveTab('profile')}
+  aria-label="Open profile"
+>
+  {profile?.name?.charAt(0).toUpperCase() || 'N'}
+</button>
 </header>
-
 
        {activeTab === 'dashboard' && (
   <Dashboard
@@ -754,86 +759,38 @@ async function removeSavedProject(id: string) {
 </section>
 )}
         
-       
-{activeTab === 'profile' && (
-  <section className="section profile-page" id="profile">
-    <div className="profile-heading">
-      <div>
-        <p className="profile-eyebrow">YOUR PERSONAL SPACE</p>
-        <h2>My Profile</h2>
-        <p>Track your skills and shape your project journey.</p>
-      </div>
-      <div className="profile-avatar">
-        {profile?.name?.charAt(0).toUpperCase() || 'N'}
-      </div>
-    </div>
+ {activeTab === 'profile' && (
+  <Profile
+    profile={profile}
+    userId={userId}
+    onSave={async (updates) => {
+      if (!userId) {
+        throw new Error('Please log in again.')
+      }
 
-    <div className="profile-summary-card">
-      <div className="profile-card-top">
-        <div>
-          <span className="profile-status">✦ PROFILE OVERVIEW</span>
-          <h3>{profile?.name || 'Your Name'}</h3>
-          <p>{profile?.experience || 'Beginner'} · Experience level</p>
-        </div>
-        <span className="profile-sparkle">✦</span>
-      </div>
+      const { error } = await supabase.from('profiles').upsert({
+        id: userId,
+        full_name: updates.name,
+        skills: updates.skills,
+        interests: updates.interests,
+        experience_level: updates.experience,
+      })
 
-      <div className="profile-stats">
-        <div className="profile-stat">
-          <span>SKILLS</span>
-          <strong>{profile?.skills.length || 0}</strong>
-        </div>
-        <div className="profile-stat">
-          <span>INTERESTS</span>
-          <strong>{profile?.interests.length || 0}</strong>
-        </div>
-      </div>
+      if (error) throw error
 
-      <div className="profile-detail">
-        <h4><span>✦</span> My Skills</h4>
-        <div className="profile-tags">
-          {profile?.skills.map(skill => (
-            <span className="profile-tag" key={skill}>{skill}</span>
-          ))}
-        </div>
-      </div>
-
-      <div className="profile-detail">
-        <h4><span>✧</span> My Interests</h4>
-        <div className="profile-tags">
-          {profile?.interests.map(interest => (
-            <span className="profile-tag" key={interest}>
-              {interest}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <button
-        className="profile-edit-button"
-        onClick={() => {
-          setMessage('')
-          setPage('profile')
-        }}
-      >
-        Edit profile <span>→</span>
-      </button>
-    </div>
-
-    <p className="profile-footer">
-      ✦ Keep growing. Your next great project starts here.
-    </p>
-  </section>
+      setProfile(updates)
+    }}
+  />
 )}
 
 
-        {activeTab === 'settings' && (
-  <section className="section" id="settings">
-    <h2>Settings</h2>
-    <p>Manage your ProjectNova preferences.</p>
-  </section>
+       {activeTab === 'settings' && (
+  <Settings
+    name={profile?.name || name}
+    email={email}
+    onLogout={logout}
+  />
 )}
-
         <footer>ProjectNova AI · From ideas to implementation ✨</footer>
       </main>
     </div>
